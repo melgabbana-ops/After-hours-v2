@@ -31,10 +31,11 @@ jobs:
           rsync -a --delete --exclude='.git/' --exclude='.github/' --exclude='TRANSFER_STATUS.md' /tmp/after-hours-source/ "$GITHUB_WORKSPACE/"
           python3 - <<'PY'
           from pathlib import Path
+          nl = chr(10)
           p = Path("vite.config.ts")
           s = p.read_text()
           if 'base: process.env.VITE_BASE_PATH || "/"' not in s:
-              s = s.replace("export default defineConfig({", 'export default defineConfig({\\n  base: process.env.VITE_BASE_PATH || "/",', 1)
+              s = s.replace("export default defineConfig({", 'export default defineConfig({' + nl + '  base: process.env.VITE_BASE_PATH || "/",', 1)
           if 'base: process.env.VITE_BASE_PATH || "/"' not in s:
               raise SystemExit("Could not configure Vite base path")
           p.write_text(s)
@@ -53,7 +54,7 @@ jobs:
           p = Path("src/main.tsx")
           s = p.read_text()
           if 'const APP_BASE_URL = import.meta.env.BASE_URL;' not in s:
-              s = s.replace("const PromptLibrary = React.lazy", 'const APP_BASE_URL = import.meta.env.BASE_URL;\\nconst PromptLibrary = React.lazy', 1)
+              s = s.replace("const PromptLibrary = React.lazy", 'const APP_BASE_URL = import.meta.env.BASE_URL;' + nl + 'const PromptLibrary = React.lazy', 1)
           s = s.replace('src="/after-hours-logo.svg"', 'src={APP_BASE_URL + "after-hours-logo.svg"}')
           s = s.replace('navigator.serviceWorker.register("/sw.js")', 'navigator.serviceWorker.register(APP_BASE_URL + "sw.js")')
           s = s.replace('fetch("/maintenance.json",', 'fetch(APP_BASE_URL + "maintenance.json",')
@@ -76,8 +77,11 @@ jobs:
               raise SystemExit("Could not locate service-worker app shell")
           s = s.replace(old_shell, new_shell)
           s = s.replace('cache.match("/")', 'cache.match(asset(""))')
-          s = s.replace('const target = typeof payload.url === "string" && payload.url.startsWith("/") ? payload.url : "/";',
-                        'const inputPath = typeof payload.url === "string" ? payload.url : "";\\n  const target = inputPath.startsWith(BASE_PATH) ? inputPath : (inputPath.startsWith("/") && !inputPath.startsWith("//") ? asset(inputPath) : asset(""));')
+          old_target = 'const target = typeof payload.url === "string" && payload.url.startsWith("/") ? payload.url : "/";'
+          new_target = 'const inputPath = typeof payload.url === "string" ? payload.url : "";' + nl + '  const target = inputPath.startsWith(BASE_PATH) ? inputPath : (inputPath.startsWith("/") && !inputPath.startsWith("//") ? asset(inputPath) : asset(""));'
+          if old_target not in s:
+              raise SystemExit("Could not locate service-worker notification path")
+          s = s.replace(old_target, new_target)
           s = s.replace('icon: "/after-hours-icon-192.png"', 'icon: asset("after-hours-icon-192.png")')
           s = s.replace('badge: "/after-hours-icon-192.png"', 'badge: asset("after-hours-icon-192.png")')
           p.write_text(s)
