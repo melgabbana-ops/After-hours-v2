@@ -1,13 +1,18 @@
-# AFTER HOURS V2 transfer status
+# AFTER HOURS V2 · Gratis bouwen en publiceren
 
-## Current state
-- This repository was created separately from the established `melgabbana-ops/AfterHours` app.
-- At transfer start, this repository contained only a short README. The existing app was in `melgabbana-ops/AfterHours`.
-- The branch `feat/port-afterhours-v2-and-pages` is being used as a safe staging branch.
-- The exact branch label `bolt logo design concept` was not present in the branches returned by GitHub for either repository. Confirm the exact Bolt-connected source branch before assuming it is exported.
+## Status
+De V2-repository is aangemaakt en bevat de voorbereide GitHub Pages-workflow op branch `feat/port-afterhours-v2-and-pages`. De broncode van de bestaande app staat nog in de afzonderlijke repository `melgabbana-ops/AfterHours`; de volledige codeoverdracht is nog niet afgerond.
 
-## Free deployment route
-GitHub Actions + GitHub Pages is the intended no-cost static hosting route for the Vite production build. It does not run backend/API code. The current app's remote account/session features require Supabase configuration; without it the app uses local/offline mode.
+## Gratis publicatie
+De beoogde host is GitHub Pages met GitHub Actions. Dit werkt voor de statische Vite-build en kost geen apart hostingabonnement binnen de gebruikelijke GitHub Pages-limieten. GitHub Pages voert geen backend of database uit; voor accounts, synchronisatie, privacygevoelige gegevens en server-side sessiecontrole blijft een geconfigureerde backend zoals Supabase nodig.
 
-## Important
-Do not merge this staging branch or call the app complete until the full application source, public assets, scripts, Supabase migrations and tests have been migrated and GitHub Actions passes. Do not include environment secrets or Supabase service-role keys in the repository. GitHub Pages settings may require selecting GitHub Actions under Settings > Pages.
+Na het overzetten en testen van de volledige app:
+1. Open **Settings → Pages**.
+2. Kies **GitHub Actions** als deployment source.
+3. Merge alleen de geteste release-PR naar `main`.
+4. Controleer de GitHub Actions-run en de gepubliceerde website.
+
+Verwachte projectsite: https://melgabbana-ops.github.io/After-hours-v2/
+
+## Belangrijke waarschuwing
+De exacte branchnaam `bolt logo design concept` werd niet gevonden in de door GitHub teruggegeven branches van de twee repositories. De code mag daarom niet als succesvol rechtstreeks uit die branch overgezet worden bestempeld voordat de Bolt-export/branch is geverifieerd. Bewaar secrets buiten Git en plaats nooit een Supabase service-role key in Vite-variabelen.
