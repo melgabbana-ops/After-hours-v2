@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Copy the full existing app source
+      - name: Copy the full existing app source and make it Pages-compatible
         shell: bash
         run: |
           set -euo pipefail
@@ -36,7 +36,7 @@ jobs:
           if 'base: process.env.VITE_BASE_PATH || "/"' not in s:
               s = s.replace("export default defineConfig({", 'export default defineConfig({\\n  base: process.env.VITE_BASE_PATH || "/",', 1)
           if 'base: process.env.VITE_BASE_PATH || "/"' not in s:
-              raise SystemExit("Could not configure Vite's GitHub Pages base path")
+              raise SystemExit("Could not configure Vite base path")
           p.write_text(s)
 
           p = Path("index.html")
@@ -58,86 +58,33 @@ jobs:
           s = s.replace('navigator.serviceWorker.register("/sw.js")', 'navigator.serviceWorker.register(APP_BASE_URL + "sw.js")')
           s = s.replace('fetch("/maintenance.json",', 'fetch(APP_BASE_URL + "maintenance.json",')
           if 'src="/after-hours-logo.svg"' in s or 'register("/sw.js")' in s or 'fetch("/maintenance.json"' in s:
-              raise SystemExit("Could not make app asset and service-worker paths base-aware")
+              raise SystemExit("Could not make app asset paths relative to the Pages base path")
           p.write_text(s)
 
           p = Path("public/manifest.webmanifest")
-          s = p.read_text()
-          s = s.replace('"start_url": "/"', '"start_url": "./"')
-          s = s.replace('"scope": "/"', '"scope": "./"')
-          s = s.replace('"src": "/icons/', '"src": "./icons/')
-          s = s.replace('"url": "/?screen=', '"url": "./?screen=')
+          s = p.read_text().replace('"start_url": "/"', '"start_url": "./"').replace('"scope": "/"', '"scope": "./"')
+          s = s.replace('"src": "/icons/', '"src": "./icons/').replace('"url": "/?screen=', '"url": "./?screen=')
           p.write_text(s)
+
+          p = Path("public/sw.js")
+          s = p.read_text()
+          old_shell = 'const APP_SHELL = ["/", "/manifest.webmanifest", "/after-hours-logo.svg", "/after-hours-icon-192.png", "/after-hours-icon-512.png"];'
+          new_shell = '''const BASE_PATH = new URL(self.registration.scope).pathname;
+          const asset = (path) => BASE_PATH + String(path || "").split("/").filter(Boolean).join("/");
+          const APP_SHELL = [asset(""), asset("manifest.webmanifest"), asset("after-hours-logo.svg"), asset("after-hours-icon-192.png"), asset("after-hours-icon-512.png")];'''
+          if old_shell not in s:
+              raise SystemExit("Could not locate service-worker app shell")
+          s = s.replace(old_shell, new_shell)
+          s = s.replace('cache.match("/")', 'cache.match(asset(""))')
+          s = s.replace('const target = typeof payload.url === "string" && payload.url.startsWith("/") ? payload.url : "/";',
+                        'const inputPath = typeof payload.url === "string" ? payload.url : "";\\n  const target = inputPath.startsWith(BASE_PATH) ? inputPath : (inputPath.startsWith("/") && !inputPath.startsWith("//") ? asset(inputPath) : asset(""));')
+          s = s.replace('icon: "/after-hours-icon-192.png"', 'icon: asset("after-hours-icon-192.png")')
+          s = s.replace('badge: "/after-hours-icon-192.png"', 'badge: asset("after-hours-icon-192.png")')
+          p.write_text(s)
+
           p = Path("public/under-construction.html")
           p.write_text(p.read_text().replace('src="/after-hours-logo.svg"', 'src="./after-hours-logo.svg"'))
           PY
-          cat > public/sw.js <<'SW'
-          self.addEventListener("message", (event) => {
-            if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
-          });
-          const CACHE_NAME = "after-hours-v4";
-          const BASE_PATH = new URL(self.registration.scope).pathname;
-          const asset = (path) => BASE_PATH + String(path || "").replace(/^\\/+/, "");
-          const APP_SHELL = [asset(""), asset("manifest.webmanifest"), asset("after-hours-logo.svg"), asset("after-hours-icon-192.png"), asset("after-hours-icon-512.png")];
-          self.addEventListener("install", (event) => {
-            event.waitUntil(caches.open(CACHE_NAME).then((cache) => Promise.all(APP_SHELL.map(async (path) => {
-              try { await cache.add(path); } catch { /* optional resources must not block installation */ }
-            }))));
-          });
-          self.addEventListener("activate", (event) => {
-            event.waitUntil(caches.keys()
-              .then((keys) => Promise.all(keys.filter((key) => key.startsWith("after-hours-") && key !== CACHE_NAME).map((key) => caches.delete(key))))
-              .then(() => self.clients.claim()));
-          });
-          self.addEventListener("fetch", (event) => {
-            const request = event.request;
-            if (request.method !== "GET") return;
-            const url = new URL(request.url);
-            if (url.origin !== self.location.origin) return;
-            event.respondWith((async () => {
-              const cache = await caches.open(CACHE_NAME);
-              try {
-                const response = await fetch(request);
-                if (response && response.ok) event.waitUntil(cache.put(request, response.clone()));
-                return response;
-              } catch {
-                const cached = await cache.match(request);
-                if (cached) return cached;
-                if (request.mode === "navigate") return (await cache.match(asset(""))) || Response.error();
-                return Response.error();
-              }
-            })());
-          });
-          self.addEventListener("push", (event) => {
-            let payload = {};
-            try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data ? event.data.text() : "" }; }
-            const title = typeof payload.title === "string" ? payload.title : "AFTER HOURS";
-            const body = typeof payload.body === "string" ? payload.body : "Je hebt een nieuwe melding.";
-            const inputPath = typeof payload.url === "string" ? payload.url : "";
-            const target = inputPath.startsWith(BASE_PATH) ? inputPath : (inputPath.startsWith("/") && !inputPath.startsWith("//") ? asset(inputPath) : asset(""));
-            event.waitUntil(self.registration.showNotification(title, {
-              body, icon: asset("after-hours-icon-192.png"), badge: asset("after-hours-icon-192.png"),
-              tag: typeof payload.tag === "string" ? payload.tag : "after-hours-notification",
-              data: { url: target }, renotify: false
-            }));
-          });
-          self.addEventListener("notificationclick", (event) => {
-            event.notification.close();
-            const target = event.notification && event.notification.data && typeof event.notification.data.url === "string"
-              ? event.notification.data.url : asset("");
-            event.waitUntil((async () => {
-              const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-              for (const client of windows) {
-                if ("focus" in client) {
-                  await client.focus();
-                  if ("navigate" in client && target !== asset("")) await client.navigate(target);
-                  return;
-                }
-              }
-              if (self.clients.openWindow) await self.clients.openWindow(target);
-            })());
-          });
-          SW
           cat >> README.md <<'DOC'
 
           ## V2 free-hosting transfer
@@ -148,10 +95,10 @@ jobs:
 
           - Ported the existing full AFTER HOURS app source tree from `melgabbana-ops/AfterHours`, branch `design/visual-rebuild-moodboard-20261018`.
           - Retained the V2-specific GitHub Pages workflow; legacy workflows from the old repository were not copied.
-          - Adjusted app, manifest, service-worker, favicon and logo paths for the GitHub Pages project path `/After-hours-v2/`.
+          - Adjusted app, manifest, service-worker, favicon and logo paths for `/After-hours-v2/`.
           - `main` remains unchanged. Changes are staged on `feat/port-afterhours-v2-and-pages` behind the draft pull request.
-          - The Bolt-only branch label `bolt logo design concept` was not found in GitHub branches; this is a migration from the existing GitHub source, not a verified direct Bolt export.
-          - This workflow checks tests and production build before committing the source transfer.
+          - The exact Bolt-only branch label `bolt logo design concept` was not found in GitHub branches; this is a migration from the existing GitHub source, not a verified direct Bolt export.
+          - This workflow runs tests and the production build before committing the imported source.
           DOC
           rm -f .github/workflows/port-full-app.yml
       - name: Validate tests and production build
@@ -163,8 +110,6 @@ jobs:
           VITE_BASE_PATH: /After-hours-v2/
       - name: Commit imported app to staging only
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
