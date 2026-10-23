@@ -1,25 +1,65 @@
-# AFTER HOURS V2
+# AFTER HOURS
 
-Premium, mobile-first 18+ interactive preview with a cinematic black-and-gold visual design, built to be continued without paid Bolt credits.
+Official AFTER HOURS project.
 
-## Current repository status
-This repository started with only a short README. A first standalone V2 preview and a free GitHub Pages workflow are now on the staging branch `feat/port-afterhours-v2-and-pages`. **This is not yet the full original AFTER HOURS app transfer.** The established full source is still in `melgabbana-ops/AfterHours`, and the exact branch label `bolt logo design concept` was not found in the branches GitHub returned. Please do not treat this scaffold as a complete Bolt import.
+Premium, mobile-first interactive experience with a cinematic black-and-gold visual system.
 
-## Free hosting route
-GitHub Actions builds the Vite frontend and is configured to publish the static build to GitHub Pages from `main`.
+## Included
 
-Expected address after enabling Pages and merging a tested release:
-https://melgabbana-ops.github.io/After-hours-v2/
+- 18+ access gate
+- Consent and safety state
+- Guided three-round experience
+- Server-authoritative active-time accounting for completed sessions
+- Session timer with pause/reset
+- Stop-session flow
+- Profile, level and XP presentation
+- Control-room interface
+- Responsive iPhone, Android phone, iPad and tablet layout
+- Safe-area and touch-target support for mobile browsers
+- iOS/iPadOS standalone web-app metadata
+- Installable PWA with network-first offline fallback
+- GitHub Actions production build check
 
-One-time repository setting: open **Settings → Pages** and select **GitHub Actions** as the build/deployment source. Do this after the real source port passes tests and the PR is ready. The staging PR is intentionally unmerged.
+## Development
 
-## Local development
 ```bash
 npm install
 npm run dev
-npm test
+```
+
+Production build:
+
+```bash
 npm run build
 ```
 
-## Important backend limits
-GitHub Pages serves static files only. The current preview stores safety-plan data locally in the browser. Account sign-in, remote sessions, synced consent/history, uploads and other backend functions are unavailable until the full application source and a backend such as Supabase are configured. Never add secrets or Supabase service-role keys to front-end code. The 18+ checkbox is a self-declaration, not formal age verification.
+Authentication, account-bound profiles, database-backed sessions, consent RPCs, session completion and password recovery are implemented when Supabase is configured. Payment functionality is intentionally absent from the client. Do not enable public sales until a compliant payment provider, server-side checkout/webhook flow, and required legal/business setup are in place.
+
+## Architecture
+
+The client has typed backend-ready contracts in `src/types.ts`, centralized persistence in `src/storage.ts`, and a documented production data model in `src/data-model.md`.
+
+Local storage is an offline prototype layer only. Offline sessions are not a trusted source for server-side XP, history, consent, or authorization.
+
+The PWA service worker caches same-origin application resources using a network-first strategy. Fresh resources are preferred whenever the network is available; cached resources are used as the fallback when a request fails. Third-party origins are not intercepted by the service worker.
+
+## Supabase setup
+
+Copy `.env.example` to your local environment and configure:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Provider configuration (Google/Apple), email confirmation and password-reset redirect URLs must be configured in Supabase Auth. Payment secrets must never be exposed as `VITE_*` browser variables.
+
+The app supports Supabase Auth with magic links, email/password, Google and Apple provider sign-in when the corresponding Supabase providers are configured. Password reset is also supported. Without the Supabase variables it stays in offline/local mode.
+
+The browser must only receive the public anon key. Never place a Supabase service-role key in Vite environment variables.
+
+## Deployment
+
+This is a Vite production build and is ready for a Git-connected deployment platform. Set the two Supabase variables in the deployment environment before enabling remote persistence.
+
+The PWA service worker is registered from the app shell and is safe to use without Supabase. Remote session state, consent, history, XP and authorization remain server-authoritative when Supabase is configured.
+
+## V2 free-hosting transfer
+This staging branch mirrors the existing full source from `melgabbana-ops/AfterHours` branch `design/visual-rebuild-moodboard-20261018`. GitHub Pages uses `VITE_BASE_PATH=/After-hours-v2/`; asset, manifest and service-worker paths have been adjusted for the project subpath. This is a migration from the existing GitHub source, not a verified direct Bolt ZIP export.

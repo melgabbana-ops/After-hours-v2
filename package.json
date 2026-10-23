@@ -1,19 +1,22 @@
 {
-  "name": "after-hours-v2",
+  "name": "afterhours",
   "private": true,
-  "version": "2.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:migrations": "node scripts/check-supabase-migration-ledger.mjs",
+    "check:brand": "node scripts/check-brand-assets.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "@supabase/supabase-js": "^2.57.4",
+    "@supabase/auth-js": "2.69.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
