@@ -63,3 +63,7 @@ The PWA service worker is registered from the app shell and is safe to use witho
 
 ## V2 free-hosting transfer
 This staging branch mirrors the existing full source from `melgabbana-ops/AfterHours` branch `design/visual-rebuild-moodboard-20261018`. GitHub Pages uses `VITE_BASE_PATH=/After-hours-v2/`; asset, manifest and service-worker paths have been adjusted for the project subpath. This is a migration from the existing GitHub source, not a verified direct Bolt ZIP export.
+
+
+## Staging preview deployment
+The workflow validates pushes to the V2 staging branch and then attempts a free GitHub Pages deployment from that branch. This allows a preview to be published without merging or changing `main`. If the repository's Pages publishing source has not been enabled yet, the deployment job will report that setup blocker; configure **Settings → Pages → Build and deployment → Source → GitHub Actions** once in GitHub.
